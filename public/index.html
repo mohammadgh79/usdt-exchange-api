@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>خرید و فروش تتر</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <div id="backdrop"></div>
+
+    <div id="auth-section">
+      <div class="auth-box">
+        <h2 id="auth-title">ثبت‌نام</h2>
+
+        <form id="register-form" class="auth-form">
+          <input type="text" id="register-name" placeholder="نام" required />
+          <input
+            type="email"
+            id="register-email"
+            placeholder="ایمیل"
+            required
+          />
+          <input
+            type="password"
+            id="register-password"
+            placeholder="رمز عبور"
+            required
+          />
+          <button type="submit">ثبت‌نام</button>
+        </form>
+
+        <form id="login-form" class="auth-form hidden">
+          <input type="email" id="login-email" placeholder="ایمیل" required />
+          <input
+            type="password"
+            id="login-password"
+            placeholder="رمز عبور"
+            required
+          />
+          <button type="submit">ورود</button>
+        </form>
+
+        <p class="switch-link">
+          <span id="switch-text">قبلاً ثبت‌نام کرده‌اید؟</span>
+          <a href="#" id="switch-link-btn">ورود</a>
+        </p>
+
+        <p id="auth-message"></p>
+      </div>
+    </div>
+
+    <div id="dashboard-section" class="hidden">
+      <h2>داشبورد</h2>
+      <button id="logout-btn">خروج</button>
+
+      <div class="price-box">
+        <div class="price-header">
+          <span>قیمت لحظه‌ای تتر:</span>
+          <strong id="price-value">در حال دریافت...</strong>
+        </div>
+        <canvas id="price-chart" height="150"></canvas>
+      </div>
+
+      <div class="wallet-box">
+        <div class="wallet-item">
+          <span>موجودی تومانی</span>
+          <strong id="wallet-toman">-</strong>
+        </div>
+        <div class="wallet-item">
+          <span>موجودی تتر</span>
+          <strong id="wallet-tether">-</strong>
+        </div>
+      </div>
+
+      <div class="trade-box">
+        <input
+          type="number"
+          id="trade-amount"
+          placeholder="مقدار تتر"
+          min="0"
+          step="0.01"
+        />
+        <button id="buy-btn">خرید</button>
+        <button id="sell-btn">فروش</button>
+        <p id="trade-message"></p>
+      </div>
+
+      <div class="history-box">
+        <h3>تاریخچه‌ی تراکنش‌ها</h3>
+        <canvas id="history-chart" height="200"></canvas>
+        <div class="pagination">
+          <button id="prev-page-btn">قبلی</button>
+          <span id="page-indicator">صفحه ۱</span>
+          <button id="next-page-btn">بعدی</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
