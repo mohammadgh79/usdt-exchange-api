@@ -2,10 +2,22 @@ const API_URL = "http://localhost:3000";
 
 Chart.defaults.font.family = "Vazirmatn";
 Chart.defaults.font.size = 13;
+
+
+let transactionPage = 1;
+let transactionTotalPages = 1;
+
+let dailyPage = 1;
+let dailyTotalPages = 1;
+
+const TRANSACTIONS_PER_PAGE = 5;
+const DAILY_PER_PAGE = 5;
+
+
 let authToken = localStorage.getItem("authToken");
 let lastPrice = null;
-let currentPage = 1;
-let totalPages = 1;
+
+
 
 const priceHistory = [];
 const MAX_PRICE_POINTS = 100;
@@ -14,8 +26,7 @@ const authSection = document.getElementById("auth-section");
 const dashboardSection = document.getElementById("dashboard-section");
 
 let priceChart = null;
-let historyChart = null;
-
+let dailyChart = null;
 
 async function apiRequest(path, method = "GET", body = null) {
   const headers = { "Content-Type": "application/json" };
@@ -44,8 +55,6 @@ async function withButtonLock(button, action) {
     button.disabled = false;
   }
 }
-
-// --- Tabs ---
 
 // --- Switch between register/login inside the single auth box ---
 
@@ -91,7 +100,8 @@ async function showDashboard() {
   await refreshPrice();
 
   refreshWallet();
-  refreshTransactions();
+  refreshDailySummary();
+  refreshTransactionList();
 }
 
 function showAuth() {
@@ -100,6 +110,7 @@ function showAuth() {
   dashboardSection.classList.add("hidden");
   authSection.classList.remove("hidden");
 }
+
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const submitBtn = e.target.querySelector("button");
@@ -150,13 +161,11 @@ if (authToken) showDashboard();
 // --- Charts setup ---
 
 function initCharts() {
-  // Destroy any existing chart instances before creating new ones,
-  // to avoid the "Canvas is already in use" error on repeated logins.
   if (priceChart) {
     priceChart.destroy();
   }
-  if (historyChart) {
-    historyChart.destroy();
+  if (dailyChart) {
+    dailyChart.destroy();
   }
 
   const priceCtx = document.getElementById("price-chart");
@@ -185,44 +194,50 @@ function initCharts() {
     },
   });
 
-  const historyCtx = document.getElementById("history-chart");
-  historyChart = new Chart(historyCtx, {
+  const dailyCtx = document.getElementById("daily-chart");
+  dailyChart = new Chart(dailyCtx, {
     type: "bar",
     data: {
       labels: [],
       datasets: [
         {
+          label: "خرید",
           data: [],
-          backgroundColor: [],
+          backgroundColor: "#22c55e",
+          stack: "trades",
+        },
+        {
+          label: "فروش",
+          data: [],
+          backgroundColor: "#ef4444",
+          stack: "trades",
         },
       ],
     },
     options: {
       responsive: true,
-      
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: true, labels: { color: "#94a3b8" } },
+      },
       scales: {
-        x: { ticks: { color: "#94a3b8" } },
-        y: { ticks: { color: "#94a3b8" } },
+        x: { stacked: true, ticks: { color: "#94a3b8" } },
+        y: { stacked: true, ticks: { color: "#94a3b8" } },
       },
     },
   });
 }
 
-// --- Price ---
+// --- Price (line chart) ---
 
 async function refreshPrice() {
   const data = await apiRequest("/price");
   const priceEl = document.getElementById("price-value");
 
   priceEl.textContent = `${formatNumber(data.price)} تومان`;
-
   priceEl.classList.remove("price-up", "price-down");
 
   if (lastPrice !== null) {
-    priceEl.classList.add(
-      data.price > lastPrice ? "price-up" : "price-down"
-    );
+    priceEl.classList.add(data.price > lastPrice ? "price-up" : "price-down");
   }
 
   lastPrice = data.price;
@@ -233,26 +248,36 @@ async function refreshPrice() {
     second: "2-digit",
   });
 
-  priceHistory.push({
-    time: now,
-    price: data.price,
-  });
+  priceHistory.push({ time: now, price: data.price });
+  if (priceHistory.length > MAX_PRICE_POINTS) priceHistory.shift();
 
-  if (priceHistory.length > MAX_PRICE_POINTS) {
-    priceHistory.shift();
-  }
-
-  priceChart.data.labels = priceHistory.map(
-    (p) => p.time
-  );
-
-  priceChart.data.datasets[0].data = priceHistory.map(
-    (p) => p.price
-  );
-
+  priceChart.data.labels = priceHistory.map((p) => p.time);
+  priceChart.data.datasets[0].data = priceHistory.map((p) => p.price);
   priceChart.update();
 }
+
 setInterval(refreshPrice, 5000);
+
+async function loadPriceHistory() {
+  const data = await apiRequest("/price/history");
+
+  priceHistory.length = 0;
+
+  data.history.forEach((item) => {
+    priceHistory.push({
+      time: new Date(item.createdAt).toLocaleTimeString("fa-IR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      price: item.price,
+    });
+  });
+
+  priceChart.data.labels = priceHistory.map((p) => p.time);
+  priceChart.data.datasets[0].data = priceHistory.map((p) => p.price);
+  priceChart.update();
+}
 
 // --- Wallet ---
 
@@ -266,46 +291,115 @@ async function refreshWallet() {
   );
 }
 
-// --- Transaction history (chart + pagination) ---
+// --- Daily buy/sell stacked chart ---
 
-async function refreshTransactions() {
-  const data = await apiRequest(`/transactions?page=${currentPage}&limit=20`);
-  totalPages = data.totalPages || 1;
-
-  const labels = data.transactions.map((tx) => {
-    const label = tx.type === "buy" ? "خرید" : "فروش";
-    return `${label} ${formatNumber(tx.amount)}`;
-  });
-
-  const values = data.transactions.map((tx) => tx.totalToman);
-  const colors = data.transactions.map((tx) =>
-    tx.type === "buy" ? "#22c55e" : "#ef4444",
+async function refreshDailySummary() {
+  const data = await apiRequest(
+    `/transactions/daily-summary?page=${dailyPage}&limit=${DAILY_PER_PAGE}`,
   );
 
-  historyChart.data.labels = labels;
-  historyChart.data.datasets[0].data = values;
-  historyChart.data.datasets[0].backgroundColor = colors;
-  historyChart.update();
+  const labels = data.days.map((d) =>
+    new Date(d.date).toLocaleDateString("fa-IR", {
+      month: "2-digit",
+      day: "2-digit",
+    }),
+  );
 
-  document.getElementById("page-indicator").textContent =
-    `صفحه ${currentPage} از ${totalPages}`;
-  document.getElementById("prev-page-btn").disabled = currentPage <= 1;
-  document.getElementById("next-page-btn").disabled = currentPage >= totalPages;
+  dailyChart.data.labels = labels;
+  dailyChart.data.datasets[0].data = data.days.map((d) => d.buy);
+  dailyChart.data.datasets[1].data = data.days.map((d) => -d.sell);
+
+  dailyChart.update();
+
+  dailyTotalPages = data.totalPages || 1;
+
+  document.getElementById("daily-page-indicator").textContent =
+    `صفحه ${dailyPage} از ${dailyTotalPages}`;
+
+  document.getElementById("daily-prev-btn").disabled =
+    dailyPage <= 1;
+
+  document.getElementById("daily-next-btn").disabled =
+    dailyPage >= dailyTotalPages;
 }
 
-document.getElementById("prev-page-btn").addEventListener("click", () => {
-  if (currentPage > 1) {
-    currentPage -= 1;
-    refreshTransactions();
-  }
-});
+// --- Full transaction list (text) ---
 
-document.getElementById("next-page-btn").addEventListener("click", () => {
-  if (currentPage < totalPages) {
-    currentPage += 1;
-    refreshTransactions();
-  }
-});
+async function refreshTransactionList() {
+  const data = await apiRequest(
+    `/transactions?page=${transactionPage}&limit=5`,
+  );
+
+  const list = document.getElementById("transaction-list");
+  list.innerHTML = "";
+
+  transactionTotalPages = data.totalPages || 1;
+
+  data.transactions.forEach((tx) => {
+    const item = document.createElement("li");
+    const isBuy = tx.type === "buy";
+
+    const typeLabel = isBuy ? "خرید" : "فروش";
+    const typeClass = isBuy ? "tx-buy" : "tx-sell";
+
+    const dateStr = new Date(tx.createdAt).toLocaleDateString("fa-IR");
+
+    const timeStr = new Date(tx.createdAt).toLocaleTimeString("fa-IR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+    item.innerHTML = `
+      <div class="tx-row-top">
+        <span class="${typeClass}">
+          ${typeLabel} ${formatNumber(tx.amount)} USDT
+        </span>
+
+        <span>
+          ${formatNumber(tx.totalToman)} تومان
+        </span>
+      </div>
+
+      <div class="tx-row-bottom">
+        <span>${dateStr} - ${timeStr}</span>
+
+        <span>
+          قیمت واحد: ${formatNumber(tx.pricePerUnit)}
+        </span>
+      </div>
+    `;
+
+    list.appendChild(item);
+  });
+
+  document.getElementById("transaction-page-indicator").textContent =
+    `صفحه ${transactionPage} از ${transactionTotalPages}`;
+
+  document.getElementById("transaction-prev-btn").disabled =
+    transactionPage <= 1;
+
+  document.getElementById("transaction-next-btn").disabled =
+    transactionPage >= transactionTotalPages;
+
+  document
+    .getElementById("transaction-prev-btn")
+    .addEventListener("click", () => {
+      if (transactionPage > 1) {
+        transactionPage--;
+        refreshTransactionList();
+      }
+    });
+
+  document
+    .getElementById("transaction-next-btn")
+    .addEventListener("click", () => {
+      if (transactionPage < transactionTotalPages) {
+        transactionPage++;
+        refreshTransactionList();
+      }
+    });
+}
 
 // --- Buy / Sell ---
 
@@ -316,15 +410,19 @@ function setTradeMessage(text, isError) {
   el.classList.add(isError ? "message-error" : "message-success");
 }
 
+async function refreshAllAfterTrade() {
+  refreshWallet();
+  refreshDailySummary();
+  refreshTransactionList();
+}
+
 document.getElementById("buy-btn").addEventListener("click", async (e) => {
   const amount = Number(document.getElementById("trade-amount").value);
   await withButtonLock(e.target, async () => {
     try {
       await apiRequest("/buy", "POST", { amount });
       setTradeMessage("خرید موفق بود", false);
-      refreshWallet();
-      currentPage = 1;
-      refreshTransactions();
+      refreshAllAfterTrade();
     } catch (error) {
       setTradeMessage(error.message, true);
     }
@@ -337,38 +435,9 @@ document.getElementById("sell-btn").addEventListener("click", async (e) => {
     try {
       await apiRequest("/sell", "POST", { amount });
       setTradeMessage("فروش موفق بود", false);
-      refreshWallet();
-      currentPage = 1;
-      refreshTransactions();
+      refreshAllAfterTrade();
     } catch (error) {
       setTradeMessage(error.message, true);
     }
   });
 });
-async function loadPriceHistory() {
-  const data = await apiRequest("/price/history");
-
-  priceHistory.length = 0;
-
-  data.history.forEach((item) => {
-    priceHistory.push({
-      time: new Date(item.createdAt).toLocaleTimeString("fa-IR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-
-      price: item.price,
-    });
-  });
-
-  priceChart.data.labels = priceHistory.map(
-    (p) => p.time
-  );
-
-  priceChart.data.datasets[0].data = priceHistory.map(
-    (p) => p.price
-  );
-
-  priceChart.update();
-}

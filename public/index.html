@@ -55,48 +55,53 @@
     </div>
 
     <div id="dashboard-section" class="hidden">
-      <h2>داشبورد</h2>
       <button id="logout-btn">خروج</button>
 
-      <div class="price-box">
-        <div class="price-header">
-          <span>قیمت لحظه‌ای تتر:</span>
-          <strong id="price-value">در حال دریافت...</strong>
-        </div>
-        <canvas id="price-chart" height="150"></canvas>
-      </div>
+      <div class="dashboard-grid">
+        <div class="dashboard-column">
+          <div class="price-box">
+            <div class="price-header">
+              <span>قیمت لحظه‌ای تتر:</span>
+              <strong id="price-value">در حال دریافت...</strong>
+            </div>
+            <canvas id="price-chart" height="150"></canvas>
+          </div>
 
-      <div class="wallet-box">
-        <div class="wallet-item">
-          <span>موجودی تومانی</span>
-          <strong id="wallet-toman">-</strong>
+          <div class="history-box">
+            <h3>تاریخچه‌ی تراکنش‌ها</h3>
+            <canvas id="daily-chart" height="180"></canvas>
+          </div>
         </div>
-        <div class="wallet-item">
-          <span>موجودی تتر</span>
-          <strong id="wallet-tether">-</strong>
-        </div>
-      </div>
 
-      <div class="trade-box">
-        <input
-          type="number"
-          id="trade-amount"
-          placeholder="مقدار تتر"
-          min="0"
-          step="0.01"
-        />
-        <button id="buy-btn">خرید</button>
-        <button id="sell-btn">فروش</button>
-        <p id="trade-message"></p>
-      </div>
+        <div class="dashboard-column">
+          <div class="trade-box">
+            <input
+              type="number"
+              id="trade-amount"
+              placeholder="مقدار تتر"
+              min="0"
+              step="0.01"
+            />
+            <button id="buy-btn">خرید</button>
+            <button id="sell-btn">فروش</button>
+            <p id="trade-message"></p>
+          </div>
 
-      <div class="history-box">
-        <h3>تاریخچه‌ی تراکنش‌ها</h3>
-        <canvas id="history-chart" height="200"></canvas>
-        <div class="pagination">
-          <button id="prev-page-btn">قبلی</button>
-          <span id="page-indicator">صفحه ۱</span>
-          <button id="next-page-btn">بعدی</button>
+          <div class="wallet-box">
+            <div class="wallet-item">
+              <span>موجودی تومانی</span>
+              <strong id="wallet-toman">-</strong>
+            </div>
+            <div class="wallet-item">
+              <span>موجودی تتر</span>
+              <strong id="wallet-tether">-</strong>
+            </div>
+          </div>
+
+          <div class="transaction-list-box">
+            <h3>لیست تراکنش‌ها</h3>
+            <ul id="transaction-list"></ul>
+          </div>
         </div>
       </div>
     </div>

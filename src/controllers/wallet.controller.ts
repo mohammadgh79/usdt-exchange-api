@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { Types } from 'mongoose';
 import type { AuthRequest } from '../middlewares/auth.middlewares.js';
 import { Wallet } from '../models/wallet.model.js';
 import { Transaction } from '../models/transaction.model.js';
@@ -23,24 +24,49 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
     throw new AppError('دسترسی غیرمجاز', 401);
   }
 
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
+  const transactions = await Transaction.find({ user: req.user.id })
+    .sort({ createdAt: -1 })
+    .limit(100);
 
-  const [transactions, total] = await Promise.all([
-    Transaction.find({ user: req.user.id })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    Transaction.countDocuments({ user: req.user.id }),
-  ]);
-
-  res.json({
-    transactions,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  });
+  res.json({ transactions });
 });
 
- 
+export const getDailySummary = asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    throw new AppError('دسترسی غیرمجاز', 401);
+  }
+
+  const daysCount = 7;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - (daysCount - 1));
+  startDate.setHours(0, 0, 0, 0);
+
+  const summary = await Transaction.aggregate([
+    {
+      $match: {
+        user: new Types.ObjectId(req.user.id),
+        createdAt: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+        buy: {
+          $sum: {
+            $cond: [{ $eq: ['$type', 'buy'] }, '$totalToman', 0],
+          },
+        },
+        sell: {
+          $sum: {
+            $cond: [{ $eq: ['$type', 'sell'] }, '$totalToman', 0],
+          },
+        },
+      },
+    },
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
+
+  res.json({ days: summary.map((entry) => ({ date: entry._id, buy: entry.buy, sell: entry.sell })) });
+});
