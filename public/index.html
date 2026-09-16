@@ -58,21 +58,31 @@
       <button id="logout-btn">خروج</button>
 
       <div class="dashboard-grid">
+        <!-- ستون اول -->
         <div class="dashboard-column">
           <div class="price-box">
             <div class="price-header">
               <span>قیمت لحظه‌ای تتر:</span>
               <strong id="price-value">در حال دریافت...</strong>
             </div>
+
             <canvas id="price-chart" height="150"></canvas>
           </div>
 
           <div class="history-box">
             <h3>تاریخچه‌ی تراکنش‌ها</h3>
+
             <canvas id="daily-chart" height="180"></canvas>
+
+            <div id="daily-pagination">
+              <button id="daily-prev-btn">قبلی</button>
+              <span id="daily-page-indicator">صفحه ۱ از ۱</span>
+              <button id="daily-next-btn">بعدی</button>
+            </div>
           </div>
         </div>
 
+        <!-- ستون دوم -->
         <div class="dashboard-column">
           <div class="trade-box">
             <input
@@ -82,8 +92,10 @@
               min="0"
               step="0.01"
             />
+
             <button id="buy-btn">خرید</button>
             <button id="sell-btn">فروش</button>
+
             <p id="trade-message"></p>
           </div>
 
@@ -92,6 +104,7 @@
               <span>موجودی تومانی</span>
               <strong id="wallet-toman">-</strong>
             </div>
+
             <div class="wallet-item">
               <span>موجودی تتر</span>
               <strong id="wallet-tether">-</strong>
@@ -100,7 +113,14 @@
 
           <div class="transaction-list-box">
             <h3>لیست تراکنش‌ها</h3>
+
             <ul id="transaction-list"></ul>
+
+            <div class="pagination">
+              <button id="transaction-prev-btn">قبلی</button>
+              <span id="transaction-page-indicator">صفحه ۱ از ۱</span>
+              <button id="transaction-next-btn">بعدی</button>
+            </div>
           </div>
         </div>
       </div>

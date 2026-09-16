@@ -3,7 +3,6 @@ const API_URL = "http://localhost:3000";
 Chart.defaults.font.family = "Vazirmatn";
 Chart.defaults.font.size = 13;
 
-
 let transactionPage = 1;
 let transactionTotalPages = 1;
 
@@ -13,11 +12,8 @@ let dailyTotalPages = 1;
 const TRANSACTIONS_PER_PAGE = 5;
 const DAILY_PER_PAGE = 5;
 
-
 let authToken = localStorage.getItem("authToken");
 let lastPrice = null;
-
-
 
 const priceHistory = [];
 const MAX_PRICE_POINTS = 100;
@@ -295,8 +291,10 @@ async function refreshWallet() {
 
 async function refreshDailySummary() {
   const data = await apiRequest(
-    `/transactions/daily-summary?page=${dailyPage}&limit=${DAILY_PER_PAGE}`,
+    `/transactions/daily-summary?page=${dailyPage}&limit=5`,
   );
+
+  dailyTotalPages = data.totalPages || 1;
 
   const labels = data.days.map((d) =>
     new Date(d.date).toLocaleDateString("fa-IR", {
@@ -310,18 +308,28 @@ async function refreshDailySummary() {
   dailyChart.data.datasets[1].data = data.days.map((d) => -d.sell);
 
   dailyChart.update();
-
-  dailyTotalPages = data.totalPages || 1;
-
   document.getElementById("daily-page-indicator").textContent =
     `صفحه ${dailyPage} از ${dailyTotalPages}`;
 
-  document.getElementById("daily-prev-btn").disabled =
-    dailyPage <= 1;
+  document.getElementById("daily-prev-btn").disabled = dailyPage <= 1;
 
   document.getElementById("daily-next-btn").disabled =
     dailyPage >= dailyTotalPages;
 }
+
+document.getElementById("daily-prev-btn").addEventListener("click", () => {
+  if (dailyPage > 1) {
+    dailyPage--;
+    refreshDailySummary();
+  }
+});
+
+document.getElementById("daily-next-btn").addEventListener("click", () => {
+  if (dailyPage < dailyTotalPages) {
+    dailyPage++;
+    refreshDailySummary();
+  }
+});
 
 // --- Full transaction list (text) ---
 
@@ -329,7 +337,7 @@ async function refreshTransactionList() {
   const data = await apiRequest(
     `/transactions?page=${transactionPage}&limit=5`,
   );
-
+  console.log("TRANSACTION DATA:", data);
   const list = document.getElementById("transaction-list");
   list.innerHTML = "";
 
@@ -381,25 +389,25 @@ async function refreshTransactionList() {
 
   document.getElementById("transaction-next-btn").disabled =
     transactionPage >= transactionTotalPages;
-
-  document
-    .getElementById("transaction-prev-btn")
-    .addEventListener("click", () => {
-      if (transactionPage > 1) {
-        transactionPage--;
-        refreshTransactionList();
-      }
-    });
-
-  document
-    .getElementById("transaction-next-btn")
-    .addEventListener("click", () => {
-      if (transactionPage < transactionTotalPages) {
-        transactionPage++;
-        refreshTransactionList();
-      }
-    });
 }
+
+document
+  .getElementById("transaction-prev-btn")
+  .addEventListener("click", () => {
+    if (transactionPage > 1) {
+      transactionPage--;
+      refreshTransactionList();
+    }
+  });
+
+document
+  .getElementById("transaction-next-btn")
+  .addEventListener("click", () => {
+    if (transactionPage < transactionTotalPages) {
+      transactionPage++;
+      refreshTransactionList();
+    }
+  });
 
 // --- Buy / Sell ---
 
